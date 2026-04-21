@@ -1,0 +1,3 @@
+add_executable(scratchdb_main)
+target_sources(scratchdb_main PRIVATE main.cpp)
+target_link_libraries(scratchdb_main PRIVATE scratchdb scratchdb_compiler_flags)
