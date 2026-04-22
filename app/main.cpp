@@ -61,15 +61,30 @@ struct TerminateProgram : std::runtime_error {
 
 // ********************* PAGE AND TABLE ********************
 
+// 4KB page, this should be aligned with the page size of the system.
 [[maybe_unused]] constexpr u32 page_size = 4096;
-[[maybe_unused]] constexpr u32 table_max_pages = 100;
+constexpr u32 table_max_pages = 100;
 [[maybe_unused]] constexpr u32 rows_per_page = page_size / row_size;
 [[maybe_unused]] constexpr u32 table_max_rows = rows_per_page * table_max_pages;
 
 class Table {
+    explicit Table() : pages(table_max_rows) {}
+
+    auto operator[](const u32 row_num) -> non_owned_ptr<std::byte> {
+        const u32 page_num = row_num / rows_per_page;
+        auto& page = pages[page_num];
+        if (!page) {
+            pages[page_num] = std::make_unique<std::byte[]>(page_size);
+        }
+        const u32 row_offset = row_num % rows_per_page;
+        const u32 byte_offset = row_offset % row_size;
+        return page.get() + byte_offset;
+    }
 
 private:
-    std::vector<
+    // Preallocate for now a fixed number of pages. We could use std::array but in future
+    // we could support dynamic number of pages.
+    std::vector<std::unique_ptr<std::byte[]>> pages;
 };
 
 
@@ -126,8 +141,7 @@ auto prepare_statement(std::string_view cmd) -> std::expected<Statement, InputEr
 }
 
 
-struct StatementExecutor {
-    
+struct StatementExecutor {  
     auto operator()([[maybe_unused]] const SelectStatement& stm) const -> void {
         std::println("Select statement");
     }
@@ -135,6 +149,9 @@ struct StatementExecutor {
     auto operator()([[maybe_unused]] const InsertStatement& stm) const -> void {
         std::println("Insert statement");
     }
+
+
+    Table& table;
 };
 
 auto execute_statement(Statement& stm) -> void {

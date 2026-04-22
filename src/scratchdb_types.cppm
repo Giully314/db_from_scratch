@@ -17,6 +17,10 @@ using i32 = std::int32_t;
 using i64 = std::int64_t;
 
 
+template <typename T>
+using non_owned_ptr = T*;
+
+
 // Used with std::expected to point a void error.
 struct VoidError {};
 
