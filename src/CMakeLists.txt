@@ -10,6 +10,7 @@ target_sources(scratchdb
     scratchdb_errors.cppm
     scratchdb_commands.cppm
     scratchdb_statements.cppm
+    scratchdb_vm.cppm
     )
 
 target_link_libraries(scratchdb PRIVATE scratchdb_compiler_flags)

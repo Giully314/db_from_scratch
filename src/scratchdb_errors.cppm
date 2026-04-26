@@ -20,5 +20,18 @@ enum class InputError : u8 {
     ParseStatement,
     UnrecognizedStatement,
 };
+
+auto dispatch_input_error(const InputError e) -> void {
+    switch (e) {
+    using enum InputError;
+    
+    case ParseStatement:
+        std::println("Error while parsing the statement");
+        break;
+    case UnrecognizedStatement:
+        std::println("Unrecognized statement");
+        break;
+    }
+}
     
 } // namespace scratchdb

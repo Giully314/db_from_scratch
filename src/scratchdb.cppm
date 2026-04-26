@@ -8,3 +8,4 @@ export import scratchdb.serialize;
 export import scratchdb.errors;
 export import scratchdb.commands;
 export import scratchdb.statements;
+export import scratchdb.vm;

@@ -19,6 +19,7 @@ export enum class MetaCommandResult : u8 {
     UnrecognizedCommand
 };
 
+// This should be moved inside vm.cppm.
 export auto execute_meta_command(std::string_view cmd) -> MetaCommandResult {
     if (cmd == ".exit") {
         throw TerminateProgram{"Quitting."};
