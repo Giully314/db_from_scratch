@@ -7,43 +7,7 @@ using namespace scratchdb;
 // TODO: left and right strip of white spaces.
 
 
-
-// ********************* PAGE AND TABLE ********************
-
-
-// ********************* META COMMAND ********************
-
-enum class MetaCommandResult : u8 {
-    Success,
-    UnrecognizedCommand
-};
-
-auto execute_meta_command(std::string_view cmd) -> MetaCommandResult {
-    if (cmd == ".exit") {
-        throw TerminateProgram{"Quitting."};
-    } else {
-        std::println("Unrecognized command '{}'.", cmd);
-        return MetaCommandResult::UnrecognizedCommand;
-    }
-}
-
 // ********************* STATEMENT ********************
-
-enum class InputError : u8 {
-    ParseStatement,
-    UnrecognizedStatement,
-};
-
-
-struct SelectStatement {
-
-};
-
-struct InsertStatement {
-    Row row;
-};
-
-using Statement = std::variant<SelectStatement, InsertStatement>;
 
 
 auto prepare_statement(std::string_view cmd) -> std::expected<Statement, InputError> {
