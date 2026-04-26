@@ -15,11 +15,31 @@ constexpr auto column_username_size = 32;
 constexpr auto column_email_size = 255;
 
 
-struct Row {
+struct Row final {
+    Row(const u32 id_, const std::array<char, column_username_size> username_, const std::array<char, column_email_size> email_) : 
+        id(id_), username{username_}, email{email_} {}
+
+    Row(const u32 id_, const std::string_view username_, const std::string_view email_) : id(id_) {
+        // NOTE: std::string is not null terminated, but in this case, because the arrays are initialized with \0,
+        // we don't have any problem later when using them as strings.
+        std::ranges::copy(username_, username.begin());
+        std::ranges::copy(email_, email.begin());
+    }
+
     u32 id;
     std::array<char, column_username_size> username;
     std::array<char, column_email_size> email;
 };
+
+
+template<>
+struct std::formatter<::Row> final : std::formatter<std::string_view> {
+    auto format(const ::Row& r, std::format_context& ctx) const {
+        // Only works with null terminated strings username and email.
+        return std::formatter<std::string_view>::format(std::format("Row: {} {} {}", r.id, std::string{r.username.data()}, std::string{r.email.data()}), ctx);
+    }
+};
+
 
 constexpr auto id_size = sizeof(Row::id);
 constexpr auto username_size = sizeof(Row::username);
@@ -32,13 +52,13 @@ constexpr u32 email_offset = username_offset + email_size;
 
 // We can also accept std::span<std::byte> to enforce correct size.
 // Precondition: 
-auto write(const Row& src, std::byte *dest) -> void {
+auto serialize(const Row& src, std::byte *const dest) -> void {
     std::memcpy(dest + id_offset, &src.id, id_size);
     std::memcpy(dest + username_offset, src.username.data(), username_size);
-    std::memcpy(dest + email_offset, src.email.data() , email_size);    
+    std::memcpy(dest + email_offset, src.email.data() , email_size);
 }
 
-auto read(std::byte *source) -> Row {
+auto deserialize(const std::byte *const source) -> Row {
     u32 id;
     std::array<char, column_username_size> username;
     std::array<char, column_email_size> email;
@@ -67,8 +87,14 @@ constexpr u32 table_max_pages = 100;
 [[maybe_unused]] constexpr u32 rows_per_page = page_size / row_size;
 [[maybe_unused]] constexpr u32 table_max_rows = rows_per_page * table_max_pages;
 
-class Table {
-    explicit Table() : pages(table_max_rows) {}
+// NOTE: at this moment, the Row is fixed, which means that every instance has the same size and 
+// the same fields.
+struct Table {
+    explicit Table() : pages(table_max_rows), num_rows{0} {}
+
+    auto can_insert() const noexcept -> bool {
+        return num_rows >= table_max_rows;
+    }
 
     auto operator[](const u32 row_num) -> non_owned_ptr<std::byte> {
         const u32 page_num = row_num / rows_per_page;
@@ -80,11 +106,10 @@ class Table {
         const u32 byte_offset = row_offset % row_size;
         return page.get() + byte_offset;
     }
-
-private:
     // Preallocate for now a fixed number of pages. We could use std::array but in future
     // we could support dynamic number of pages.
     std::vector<std::unique_ptr<std::byte[]>> pages;
+    u32 num_rows;
 };
 
 
@@ -134,7 +159,7 @@ auto prepare_statement(std::string_view cmd) -> std::expected<Statement, InputEr
         if (iss.fail() || !(iss >> std::ws).eof()) {
             return std::unexpected<InputError>{std::in_place, InputError::ParseStatement};
         }
-        return std::expected<Statement, InputError>{std::in_place, InsertStatement{}};
+        return std::expected<Statement, InputError>{std::in_place, InsertStatement{Row{id, username, email}}};
     }
 
     return std::unexpected<InputError>{std::in_place, InputError::UnrecognizedStatement}; 
@@ -144,18 +169,33 @@ auto prepare_statement(std::string_view cmd) -> std::expected<Statement, InputEr
 struct StatementExecutor {  
     auto operator()([[maybe_unused]] const SelectStatement& stm) const -> void {
         std::println("Select statement");
+
+        for (u32 i = 0; i < table.num_rows; ++i) {
+            auto r = deserialize(table[i]);
+            std::println("{}", r);
+        }
     }
     
     auto operator()([[maybe_unused]] const InsertStatement& stm) const -> void {
-        std::println("Insert statement");
+        std::println("Insert statement with row {}", stm.row);
+        
+        if (!table.can_insert()) {
+            // Signal no memory.
+        }
+
+        const auto p = table[table.num_rows];
+        serialize(stm.row, p);  
+        ++table.num_rows;
     }
 
 
     Table& table;
 };
 
+Table table;
+
 auto execute_statement(Statement& stm) -> void {
-    std::visit(StatementExecutor{}, stm);
+    std::visit(StatementExecutor{table}, stm);
 }
 
 
@@ -178,6 +218,10 @@ auto dispatch_input_error(const InputError e) -> void {
 
 auto main() -> int {
     std::println("Hello world {}", sizeof(Row::username));
+
+    Row r{23, "pippo", "pippo@example.com"};
+
+    std::println("{}", r);
 
     std::string input;
     try {
