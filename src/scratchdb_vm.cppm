@@ -29,23 +29,23 @@ public:
             while (true) {
                 std::print("db > ");
                 std::getline(std::cin, input);
-        
-                // Dispatch between statements and meta commands.
-        
-                if (input.starts_with(".")) {
-                    execute_meta_command(input);
-                } else {
-                    
-                    auto statement = prepare_statement(input);
-                    if (statement) {
-                        execute_statement(*statement);
-                    } else {
-                        dispatch_input_error(statement.error());
-                    }
-                }
+                process_input(input);
             }
         } catch (const TerminateProgram& e) {
             std::println("{}", e.what());
+        }
+    }
+
+    auto process_input(std::string_view input) -> void {
+        if (input.starts_with(".")) {
+            execute_meta_command(input);
+        } else {
+            auto statement = prepare_statement(input);
+            if (statement) {
+                execute_statement(*statement);
+            } else {
+                dispatch_input_error(statement.error());
+            }
         }
     }
 
