@@ -13,8 +13,9 @@ import scratchdb.types;
 
 namespace scratchdb {
 
-export constexpr auto column_username_size = 32;
-export constexpr auto column_email_size = 255;
+export constexpr u32 column_username_size = 32;
+export constexpr u32 column_email_size = 256;
+
 
 export struct Row final {
     Row(const u32 id_, const std::array<char, column_username_size> username_, const std::array<char, column_email_size> email_) : 
@@ -23,8 +24,9 @@ export struct Row final {
     Row(const u32 id_, const std::string_view username_, const std::string_view email_) : id(id_), username{}, email{} {
         // NOTE: std::string is not null terminated, but in this case, because the arrays are initialized with \0,
         // we don't have any problem later when using them as strings.
-        std::ranges::copy(username_, username.begin());
-        std::ranges::copy(email_, email.begin());
+        // -1 is to keep the \0.
+        std::ranges::copy_n(username_, std::min(username_.size(), column_username_size - 1), username.begin());
+        std::ranges::copy_n(email_, std::min(email_.size(), column_email_size - 1), email.begin());
     }
 
     u32 id;
