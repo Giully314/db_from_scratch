@@ -13,11 +13,19 @@ set(CMAKE_CXX_SCAN_FOR_MODULES ON)
 
 add_library(scratchdb_compiler_flags)
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    target_compile_options(scratchdb_compiler_flags INTERFACE -Werror -pedantic-errors -Wall -Wextra -Wconversion -Wsign-conversion)
+    execute_process(
+        COMMAND ${CMAKE_CXX_COMPILER} -print-resource-dir
+        OUTPUT_VARIABLE CLANG_RESOURCE_DIR
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    cmake_path(GET CLANG_RESOURCE_DIR PARENT_PATH CLANG_LIB_DIR)
+    cmake_path(GET CLANG_LIB_DIR PARENT_PATH CLANG_LIB_DIR)
+    target_compile_options(scratchdb_compiler_flags INTERFACE -Werror -pedantic-errors -Wall -Wextra -Wconversion -Wsign-conversion -stdlib=libc++)
+    target_link_options(scratchdb_compiler_flags INTERFACE -stdlib=libc++ -L${CLANG_LIB_DIR}/c++)
 endif()
 
-# enable_testing()
-# add_subdirectory(tests)
+enable_testing()
+add_subdirectory(tests)
 
 add_subdirectory(src)
 add_subdirectory(app)
